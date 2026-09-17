@@ -1,0 +1,85 @@
+/* Ordinal Headings */
+
+.ordinal-headings-label {
+	display: inline;
+	margin-right: 0.35em;
+	font-variant-numeric: tabular-nums;
+	font-weight: 600;
+	opacity: 0.72;
+	user-select: none;
+	-webkit-user-select: none;
+}
+
+.markdown-preview-view .ordinal-headings-label,
+.markdown-reading-view .ordinal-headings-label {
+	margin-right: 0.4em;
+}
+
+/* Settings gallery */
+.ordinal-headings-gallery {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 10px;
+	margin: 12px 0 20px;
+}
+
+.ordinal-headings-preset {
+	box-sizing: border-box;
+	padding: 10px 12px;
+	border-radius: 8px;
+	border: 1px solid var(--background-modifier-border);
+	background: var(--background-secondary);
+	cursor: pointer;
+	min-height: 88px;
+	transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.ordinal-headings-preset:hover {
+	border-color: var(--interactive-accent);
+}
+
+.ordinal-headings-preset.is-selected {
+	border-color: var(--interactive-accent);
+	box-shadow: 0 0 0 1px var(--interactive-accent);
+}
+
+.ordinal-headings-preset-title {
+	font-weight: 600;
+	font-size: 12px;
+	margin-bottom: 6px;
+	color: var(--text-normal);
+}
+
+.ordinal-headings-preset-line {
+	font-size: 11px;
+	line-height: 1.35;
+	color: var(--text-muted);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.ordinal-headings-help-list {
+	margin: 0.4em 0 0.8em 1.2em;
+	padding: 0;
+	color: var(--text-muted);
+	font-size: var(--font-ui-smaller);
+	line-height: 1.45;
+}
+
+.ordinal-headings-help-list li {
+	margin-bottom: 0.35em;
+}
+
+.ordinal-headings-code-sample {
+	margin: 0.4em 0 0.8em;
+	padding: 10px 12px;
+	border-radius: 6px;
+	background: var(--background-secondary);
+	border: 1px solid var(--background-modifier-border);
+	font-size: 12px;
+	line-height: 1.4;
+	overflow-x: auto;
+	white-space: pre;
+	color: var(--text-muted);
+}
