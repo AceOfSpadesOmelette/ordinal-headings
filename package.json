@@ -1,6 +1,6 @@
 {
 	"name": "ordinal-headings",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Ordinal Headings: live Word-style automatic numbering for Obsidian headings.",
 	"main": "main.js",
 	"type": "module",

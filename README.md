@@ -24,6 +24,8 @@ By default, numbers are **visual only**. They appear next to headings while you 
 
 If a heading already starts with a number-like prefix (for example `1.` or `2.1`), the visual label is skipped so you do not see doubles like `1. 1. Title`.
 
+Synthetic titles are also skipped so they do not steal a number: Obsidian’s inline note title, and Better Export PDF’s injected `__title__` (filename-as-title).
+
 ## Put numbers into Markdown (bake)
 
 Baking writes the numbers into the file text (useful for PDF, Publish, search, and the outline). It is **manual** and only affects the note you currently have open — it does **not** auto-insert while you type, and it does **not** process the whole vault.

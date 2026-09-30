@@ -6,6 +6,17 @@ import type { LevelFormats, OrdinalSettings } from "./types";
 const ATTR = "data-ordinal-headings";
 
 /**
+ * Synthetic / UI titles that look like headings but must not consume a number.
+ * - `__title__`: Better Export PDF "Add file name as title"
+ * - `inline-title`: Obsidian note title in the reading view chrome
+ */
+function isContentHeading(el: HTMLElement): boolean {
+	if (el.classList.contains("__title__")) return false;
+	if (el.classList.contains("inline-title")) return false;
+	return true;
+}
+
+/**
  * Apply visual labels to h1–h6 in reading / live-preview rendered HTML.
  */
 export class ReadingOrdinalManager {
@@ -54,7 +65,7 @@ export class ReadingOrdinalManager {
 
 		const headings = Array.from(
 			el.querySelectorAll<HTMLElement>("h1, h2, h3, h4, h5, h6"),
-		);
+		).filter(isContentHeading);
 		if (headings.length === 0) return;
 
 		const numbered = this.numberFromDomOrder(headings, formats);
