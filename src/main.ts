@@ -1,8 +1,10 @@
-import { MarkdownView, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
+import { Editor, MarkdownView, Notice, Plugin, TFile, WorkspaceLeaf } from "obsidian";
 import type { Extension } from "@codemirror/state";
 import {
 	bakeNumbersIntoEditor,
+	bakeNumbersIntoText,
 	stripNumbersFromEditor,
+	stripNumbersFromText,
 } from "./bake";
 import { buildEditorOrdinalExtension } from "./editor-ordinal";
 import { ReadingOrdinalManager } from "./reading-ordinal";
@@ -22,6 +24,7 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 	async onload(): Promise<void> {
 		await this.loadSettings();
 
+		this.readingManager.setApp(this.app);
 		this.registerEditorExtension(this.editorExtensions);
 		this.applySettings();
 
@@ -94,29 +97,26 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 		this.addCommand({
 			id: "bake-current-note",
 			name: "Bake numbers into current note",
-			editorCallback: (editor) => {
-				const n = bakeNumbersIntoEditor(editor, {
-					...this.settings,
-					presetId: this.effectivePresetId(),
-				});
-				new Notice(
-					n > 0
-						? `Baked numbers into ${n} heading(s).`
-						: "No headings to number.",
-				);
+			checkCallback: (checking) => {
+				const file = this.activeMarkdownFile();
+				if (!file) return false;
+				if (!checking) {
+					void this.bakeActiveNote(file);
+				}
+				return true;
 			},
 		});
 
 		this.addCommand({
 			id: "strip-baked-current-note",
 			name: "Strip baked numbers from current note",
-			editorCallback: (editor) => {
-				const n = stripNumbersFromEditor(editor);
-				new Notice(
-					n > 0
-						? `Removed numbers from ${n} heading(s).`
-						: "Nothing to strip.",
-				);
+			checkCallback: (checking) => {
+				const file = this.activeMarkdownFile();
+				if (!file) return false;
+				if (!checking) {
+					void this.stripActiveNote(file);
+				}
+				return true;
 			},
 		});
 
@@ -134,6 +134,74 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 		const file = this.app.workspace.getActiveFile();
 		if (!file) return this.settings.presetId;
 		return this.notePresetId(file.path);
+	}
+
+	private activeMarkdownFile(): TFile | null {
+		const file = this.app.workspace.getActiveFile();
+		if (file instanceof TFile && file.extension === "md") return file;
+		return null;
+	}
+
+	private activeEditor(): Editor | null {
+		const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+		if (!view) return null;
+		// Reading view may still expose an editor instance that is not the live buffer.
+		if (view.getMode && view.getMode() === "preview") return null;
+		return view.editor ?? null;
+	}
+
+	private async bakeActiveNote(file: TFile): Promise<void> {
+		const settings = {
+			...this.settings,
+			presetId: this.effectivePresetId(),
+		};
+		const editor = this.activeEditor();
+		if (editor) {
+			const n = bakeNumbersIntoEditor(editor, settings);
+			new Notice(
+				n > 0
+					? `Baked numbers into ${n} heading(s).`
+					: "No headings to number.",
+			);
+			return;
+		}
+
+		let count = 0;
+		await this.app.vault.process(file, (data) => {
+			const result = bakeNumbersIntoText(data, settings);
+			count = result.count;
+			return result.text;
+		});
+		new Notice(
+			count > 0
+				? `Baked numbers into ${count} heading(s).`
+				: "No headings to number.",
+		);
+	}
+
+	private async stripActiveNote(file: TFile): Promise<void> {
+		const editor = this.activeEditor();
+		if (editor) {
+			const n = stripNumbersFromEditor(editor);
+			new Notice(
+				n > 0
+					? `Removed numbers from ${n} heading(s).`
+					: "Nothing to strip.",
+			);
+			return;
+		}
+
+		let count = 0;
+		await this.app.vault.process(file, (data) => {
+			const result = stripNumbersFromText(data);
+			count = result.count;
+			return result.text;
+		});
+		new Notice(
+			count > 0
+				? `Removed numbers from ${count} heading(s).`
+				: "Nothing to strip.",
+		);
 	}
 
 	private syncActiveNote(): void {

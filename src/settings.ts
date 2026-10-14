@@ -183,7 +183,7 @@ export class OrdinalSettingTab extends PluginSettingTab {
 			cls: "setting-item-description ordinal-headings-help-list",
 		});
 		bakeSteps.createEl("li", {
-			text: "Open the note you want to number (use Edit mode on mobile).",
+			text: "Open the note you want to number (Edit or Reading view).",
 		});
 		bakeSteps.createEl("li", {
 			text: "Choose your style above in the List library (bake uses the active preset).",

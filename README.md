@@ -24,7 +24,7 @@ By default, numbers are **visual only**. They appear next to headings while you 
 
 If a heading already starts with a number-like prefix (for example `1.` or `2.1`), the visual label is skipped so you do not see doubles like `1. 1. Title`.
 
-Synthetic titles are also skipped so they do not steal a number: Obsidian’s inline note title, and Better Export PDF’s injected `__title__` (filename-as-title).
+Synthetic titles are also skipped so they do not steal a number: Obsidian’s inline note title, Better Export PDF / Pagina’s injected `__title__` (filename-as-title), and Conspectus’s TOC title (`.conspectus-toc-title`).
 
 ## Put numbers into Markdown (bake)
 
@@ -32,7 +32,7 @@ Baking writes the numbers into the file text (useful for PDF, Publish, search, a
 
 ### Steps
 
-1. Open the note you want to number (use **Edit** mode on mobile).
+1. Open the note you want to number (Edit or Reading view).
 2. In **Settings → Ordinal Headings**, choose your style in the List library (bake uses the active preset).
 3. Open the **Command palette**:
    - Desktop: `Ctrl+P` (Windows) or `Cmd+P` (Mac)
@@ -85,9 +85,14 @@ You can also run **Toggle numbering for current note** from the command palette.
 | Toggle numbering for current note | Frontmatter on/off for this note |
 | Refresh heading numbers | Re-apply visual decorations |
 
+
+
 ## Develop
 
 ```bash
 npm install
 npm run build
+npm test
 ```
+
+CI runs build + Jest on push/PR. Tag a version matching `manifest.json` (for example `1.0.0`) to create a draft GitHub release with `main.js`, `manifest.json`, and `styles.css` when present.
