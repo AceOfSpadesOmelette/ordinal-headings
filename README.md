@@ -16,7 +16,7 @@ Copy `main.js`, `manifest.json`, and `styles.css` into:
 
 `<vault>/.obsidian/plugins/ordinal-headings/`
 
-Enable **Ordinal Headings** in Community plugins.
+Enable **Ordinal Headings** in Community plugins. **Settings → Ordinal Headings** can export or import the numbering configuration as `ordinal-headings-settings.json`.
 
 ## How numbering works
 

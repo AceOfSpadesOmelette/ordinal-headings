@@ -1,6 +1,7 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type OrdinalHeadingsPlugin from "./main";
 import { EMPTY_FORMATS, PRESETS } from "./presets";
+import { applyImportedSettings, mountSettingsFileControls } from "./settings-io";
 import type { HeadingLevel, LevelFormats, OrdinalSettings } from "./types";
 
 export const DEFAULT_SETTINGS: OrdinalSettings = {
@@ -222,6 +223,19 @@ export class OrdinalSettingTab extends PluginSettingTab {
 		containerEl.createEl("p", {
 			cls: "setting-item-description",
 			text: "Commands (Command palette): Bake numbers into current note · Strip baked numbers from current note · Toggle numbering for current note · Refresh heading numbers.",
+		});
+
+		mountSettingsFileControls(containerEl, {
+			filename: "ordinal-headings-settings.json",
+			pluginName: "Ordinal Headings",
+			getSettings: () => this.plugin.settings,
+			normalize: normalizeSettings,
+			onImported: async (next) => {
+				applyImportedSettings(this.plugin.settings, next);
+				await this.plugin.saveSettings();
+				this.plugin.applySettings();
+				this.display();
+			},
 		});
 	}
 }
