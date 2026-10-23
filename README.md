@@ -1,98 +1,75 @@
 # Ordinal Headings
 
-Live Word-style numbering for Heading 1–6 in Obsidian. Numbers are **visual by default** (your Markdown stays clean) and update as you edit.
-
-## Features
-
-- Multilevel presets (decimal, parenthetical, classic outline, chapter, Chinese 第X章, …)
-- Custom format tokens: `{n}` `{dotted}` `{1}`–`{6}` `{roman}` `{Roman}` `{alpha}` `{Alpha}` `{zh}`
-- Live Preview + Reading view (desktop and Android)
-- Per-note frontmatter override
-- Optional **bake** / **strip** commands for the **current note only**
-
-## Install
-
-Copy `main.js`, `manifest.json`, and `styles.css` into:
-
-`<vault>/.obsidian/plugins/ordinal-headings/`
-
-Enable **Ordinal Headings** in Community plugins. **Settings → Ordinal Headings** can export or import the numbering configuration as `ordinal-headings-settings.json`.
+Word-style numbers for Heading 1–6. By default the numbers are visual only, so the Markdown stays clean, and they update as you edit. Live Preview and Reading view are both supported, on desktop and on Android.
 
 ## How numbering works
 
-By default, numbers are **visual only**. They appear next to headings while you edit or read, but they are **not** written into the Markdown file. They update automatically when you add, remove, or reorder headings.
+Numbers appear next to headings while you edit or read. They are not written into the file until you bake them. They update when you add, remove, or reorder headings.
 
-If a heading already starts with a number-like prefix (for example `1.` or `2.1`), the visual label is skipped so you do not see doubles like `1. 1. Title`.
+If a heading already starts with a number-like prefix, such as `1.` or `2.1`, the visual label is skipped so you do not see `1. 1. Title`.
 
-Synthetic titles are also skipped so they do not steal a number: Obsidian’s inline note title, Better Export PDF / Pagina’s injected `__title__` (filename-as-title), and Conspectus’s TOC title (`.conspectus-toc-title`).
+These titles are also skipped, so they do not take a number:
 
-## Put numbers into Markdown (bake)
+- Obsidian’s inline note title
+- A filename title injected by Better Export PDF or Pagina
+- A Conspectus table-of-contents title
 
-Baking writes the numbers into the file text (useful for PDF, Publish, search, and the outline). It is **manual** and only affects the note you currently have open — it does **not** auto-insert while you type, and it does **not** process the whole vault.
+## Styles
 
-### Steps
+Choose a preset in **Settings → Ordinal Headings**, or build a custom format. Tokens you can use:
 
-1. Open the note you want to number (Edit or Reading view).
-2. In **Settings → Ordinal Headings**, choose your style in the List library (bake uses the active preset).
-3. Open the **Command palette**:
-   - Desktop: `Ctrl+P` (Windows) or `Cmd+P` (Mac)
-   - Android: use Obsidian’s **Commands** / command palette entry
-4. Run: **Ordinal Headings: Bake numbers into current note**
-5. Headings in that note are rewritten, for example:
+`{n}` `{dotted}` `{1}`–`{6}` `{roman}` `{Roman}` `{alpha}` `{Alpha}` `{zh}`
+
+Presets include decimal, parenthetical, classic outline, chapter, and Chinese 第X章.
+
+Under **Backup**, **Export settings** and **Import settings** save or restore the configuration as `ordinal-headings-settings.json`.
+
+## Put numbers into the note
+
+Baking writes the numbers into the current note only. It does not number the rest of the vault, and it does not insert numbers while you type. Baking is useful when you want the numbers in a PDF, in Obsidian Publish, in search, or in the outline.
+
+1. Open the note.
+2. In **Settings → Ordinal Headings**, choose the style. Bake uses the active preset.
+3. Open the command palette (`Ctrl+P` on Windows, `Cmd+P` on Mac, or the Commands entry on Android).
+4. Run **Bake numbers into current note**.
+
+For the decimal preset, this:
 
 ```markdown
 # Intro
 ## Background
 ```
 
-may become (decimal preset):
+becomes:
 
 ```markdown
 # 1 Intro
 ## 1.1 Background
 ```
 
-(Exact text depends on your preset / custom formats.)
+The exact text follows your preset or custom format.
 
-### Re-bake after edits
+After you add, remove, or reorder headings, run **Bake numbers into current note** again. Bake removes an old recognizable prefix first, so a heading becomes `# 2.2 Title` rather than `# 2.2 2.1 Title`.
 
-After you add, remove, or reorder headings, baked numbers can go stale. Run **Bake** again to renumber.
+To take the numbers back out, run **Strip baked numbers from current note**.
 
-Bake strips an old recognizable prefix first, so you should get `# 2.2 Title`, not `# 2.2 2.1 Title`.
-
-### Remove baked numbers
-
-Command palette → **Ordinal Headings: Strip baked numbers from current note**
-
-## Frontmatter (per-note)
+## One note at a time
 
 ```yaml
 ordinal-headings: off
 ordinal-headings-style: zh-chapter
 ```
 
-- `ordinal-headings: off` (or `on`) — disable / enable for this note  
-- `ordinal-headings-style` — preset for this note (`decimal`, `zh-chapter`, `custom`, …)
+- `ordinal-headings: off` or `on` turns numbering off or on for this note.
+- `ordinal-headings-style` picks a preset for this note, such as `decimal`, `zh-chapter`, or `custom`.
 
-You can also run **Toggle numbering for current note** from the command palette.
+**Toggle numbering for current note** writes that on/off flag for the open note.
 
-## Commands summary
+## Commands
 
 | Command | What it does |
-|---------|----------------|
+| --- | --- |
 | Bake numbers into current note | Write numbers into this note’s Markdown |
 | Strip baked numbers from current note | Remove recognizable number prefixes |
-| Toggle numbering for current note | Frontmatter on/off for this note |
-| Refresh heading numbers | Re-apply visual decorations |
-
-
-
-## Develop
-
-```bash
-npm install
-npm run build
-npm test
-```
-
-CI runs build + Jest on push/PR. Tag a version matching `manifest.json` (for example `1.0.0`) to create a draft GitHub release with `main.js`, `manifest.json`, and `styles.css` when present.
+| Toggle numbering for current note | Turn numbering on or off for this note |
+| Refresh heading numbers | Redraw the visual numbers |
