@@ -73,3 +73,11 @@ ordinal-headings-style: zh-chapter
 | Strip baked numbers from current note | Remove recognizable number prefixes |
 | Toggle numbering for current note | Turn numbering on or off for this note |
 | Refresh heading numbers | Redraw the visual numbers |
+
+## Support
+
+[![Buy Me a Coffee](https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png)](https://buymeacoffee.com/aceofspadesomelette)
+
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=AceOfSpadesOmelette/ordinal-headings&type=Date)](https://www.star-history.com/#AceOfSpadesOmelette/ordinal-headings&Date)
