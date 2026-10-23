@@ -289,8 +289,7 @@ export class ReadingOrdinalManager {
 			return;
 		}
 		if (!badge) {
-			badge = document.createElement("span");
-			badge.className = "ordinal-headings-label";
+			badge = createSpan({ cls: "ordinal-headings-label" });
 			el.insertBefore(badge, el.firstChild);
 		}
 		badge.textContent = label;

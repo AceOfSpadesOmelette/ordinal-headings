@@ -1,6 +1,6 @@
 {
 	"name": "ordinal-headings",
-	"version": "1.0.5",
+	"version": "1.1.0",
 	"description": "Ordinal Headings: live Word-style automatic numbering for Obsidian headings.",
 	"main": "main.js",
 	"type": "module",
@@ -8,7 +8,8 @@
 		"dev": "node esbuild.config.mjs",
 		"build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
 		"test": "jest",
-		"test:ci": "jest --ci --coverage=false"
+		"test:ci": "jest --ci --coverage=false",
+		"lint": "eslint ."
 	},
 	"keywords": [
 		"obsidian",
@@ -17,11 +18,16 @@
 		"numbering"
 	],
 	"license": "MIT",
+	"dependencies": {
+		"@codemirror/state": "^6.5.0",
+		"@codemirror/view": "^6.38.6"
+	},
 	"devDependencies": {
 		"@types/jest": "^29.5.14",
 		"@types/node": "^22.15.17",
-		"builtin-modules": "3.3.0",
 		"esbuild": "0.25.5",
+		"eslint": "^9.39.1",
+		"eslint-plugin-obsidianmd": "^0.4.2",
 		"jest": "^29.7.0",
 		"jest-environment-jsdom": "^29.7.0",
 		"obsidian": "latest",

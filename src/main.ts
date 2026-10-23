@@ -15,6 +15,15 @@ import {
 } from "./settings";
 import { FRONTMATTER_KEY, type OrdinalSettings } from "./types";
 
+function isFrontmatterRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function frontmatterField(fm: unknown, key: string): unknown {
+	if (!isFrontmatterRecord(fm)) return undefined;
+	return Object.prototype.hasOwnProperty.call(fm, key) ? fm[key] : undefined;
+}
+
 export default class OrdinalHeadingsPlugin extends Plugin {
 	settings: OrdinalSettings = { ...DEFAULT_SETTINGS };
 
@@ -240,7 +249,7 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 		const fm = cache?.frontmatter;
 		if (!fm) return true;
 
-		const raw = fm[FRONTMATTER_KEY];
+		const raw = frontmatterField(fm, FRONTMATTER_KEY);
 		if (raw === false || raw === "off" || raw === "false") return false;
 		if (raw === true || raw === "on" || raw === "true") return true;
 		return true;
@@ -249,21 +258,21 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 	notePresetId(sourcePath: string): string {
 		const cache = this.app.metadataCache.getCache(sourcePath);
 		const style =
-			cache?.frontmatter?.[`${FRONTMATTER_KEY}-style`] ??
-			cache?.frontmatter?.["ordinal-headings-style"];
+			frontmatterField(cache?.frontmatter, `${FRONTMATTER_KEY}-style`) ??
+			frontmatterField(cache?.frontmatter, "ordinal-headings-style");
 		if (typeof style === "string" && style.trim()) return style.trim();
 		return this.settings.presetId;
 	}
 
 	private async toggleNoteFrontmatter(file: TFile): Promise<void> {
-		await this.app.fileManager.processFrontMatter(file, (fm) => {
-			const cur = fm[FRONTMATTER_KEY];
-			const currentlyOff =
-				cur === false || cur === "off" || cur === "false";
+		await this.app.fileManager.processFrontMatter(file, (frontmatter) => {
+			const cur = frontmatterField(frontmatter, FRONTMATTER_KEY);
+			const currentlyOff = cur === false || cur === "off" || cur === "false";
+			if (!isFrontmatterRecord(frontmatter)) return;
 			if (currentlyOff) {
-				delete fm[FRONTMATTER_KEY];
+				delete frontmatter[FRONTMATTER_KEY];
 			} else {
-				fm[FRONTMATTER_KEY] = "off";
+				frontmatter[FRONTMATTER_KEY] = "off";
 			}
 		});
 		this.syncActiveNote();

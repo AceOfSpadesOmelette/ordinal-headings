@@ -1,3 +1,4 @@
+import "obsidian";
 import { Extension, Facet, RangeSetBuilder } from "@codemirror/state";
 import {
 	Decoration,
@@ -46,10 +47,11 @@ class OrdinalWidget extends WidgetType {
 	}
 
 	toDOM(): HTMLElement {
-		const span = document.createElement("span");
-		span.className = "ordinal-headings-label";
-		span.textContent = this.label;
-		span.setAttribute("aria-hidden", "true");
+		const span = createSpan({
+			cls: "ordinal-headings-label",
+			text: this.label,
+			attr: { "aria-hidden": "true" },
+		});
 		return span;
 	}
 

@@ -1,7 +1,7 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import { App, Notice, PluginSettingTab, type Setting, type SettingDefinition, type SettingDefinitionItem } from "obsidian";
 import type OrdinalHeadingsPlugin from "./main";
 import { EMPTY_FORMATS, PRESETS } from "./presets";
-import { applyImportedSettings, mountSettingsFileControls } from "./settings-io";
+import { applyImportedSettings, downloadSettingsJson, parseSettingsJson, pickSettingsFile } from "./settings-io";
 import type { HeadingLevel, LevelFormats, OrdinalSettings } from "./types";
 
 export const DEFAULT_SETTINGS: OrdinalSettings = {
@@ -19,26 +19,61 @@ export const DEFAULT_SETTINGS: OrdinalSettings = {
 	trailing: " ",
 };
 
+function asHeadingLevel(value: unknown): HeadingLevel {
+	const start = Number(value);
+	if (start === 1 || start === 2 || start === 3 || start === 4 || start === 5 || start === 6) {
+		return start;
+	}
+	return 1;
+}
+
+function asLevelFormats(value: unknown): LevelFormats {
+	if (!Array.isArray(value) || value.length !== 6) {
+		return [...DEFAULT_SETTINGS.customFormats];
+	}
+	const formats: string[] = [];
+	for (const item of value) {
+		if (typeof item !== "string") return [...DEFAULT_SETTINGS.customFormats];
+		formats.push(item);
+	}
+	const first = formats[0];
+	const second = formats[1];
+	const third = formats[2];
+	const fourth = formats[3];
+	const fifth = formats[4];
+	const sixth = formats[5];
+	if (
+		first === undefined ||
+		second === undefined ||
+		third === undefined ||
+		fourth === undefined ||
+		fifth === undefined ||
+		sixth === undefined
+	) {
+		return [...DEFAULT_SETTINGS.customFormats];
+	}
+	return [first, second, third, fourth, fifth, sixth];
+}
+
 export function normalizeSettings(raw: unknown): OrdinalSettings {
 	const data = (raw ?? {}) as Partial<OrdinalSettings>;
-	const start = Number(data.startLevel);
-	const startLevel = (
-		start >= 1 && start <= 6 ? start : 1
-	) as HeadingLevel;
-
-	let customFormats = data.customFormats;
-	if (!Array.isArray(customFormats) || customFormats.length !== 6) {
-		customFormats = [...DEFAULT_SETTINGS.customFormats];
-	}
-
 	return {
 		enabled: data.enabled !== false,
-		startLevel,
+		startLevel: asHeadingLevel(data.startLevel),
 		presetId: typeof data.presetId === "string" ? data.presetId : "decimal",
-		customFormats: customFormats as LevelFormats,
+		customFormats: asLevelFormats(data.customFormats),
 		trailing: typeof data.trailing === "string" ? data.trailing : " ",
 	};
 }
+
+const START_LEVEL_OPTIONS: Record<string, string> = {
+	"1": "Heading 1",
+	"2": "Heading 2",
+	"3": "Heading 3",
+	"4": "Heading 4",
+	"5": "Heading 5",
+	"6": "Heading 6",
+};
 
 export class OrdinalSettingTab extends PluginSettingTab {
 	plugin: OrdinalHeadingsPlugin;
@@ -48,194 +83,203 @@ export class OrdinalSettingTab extends PluginSettingTab {
 		this.plugin = plugin;
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
-		containerEl.createEl("h2", { text: "Ordinal Headings" });
+	override getControlValue(key: string): unknown {
+		if (key === "startLevel") return String(this.plugin.settings.startLevel);
+		return super.getControlValue(key);
+	}
 
-		new Setting(containerEl)
-			.setName("Enable numbering")
-			.setDesc(
-				"Show live heading numbers visually (does not modify your notes).",
-			)
-			.addToggle((t) =>
-				t.setValue(this.plugin.settings.enabled).onChange(async (v) => {
-					this.plugin.settings.enabled = v;
-					await this.plugin.saveSettings();
-					this.plugin.applySettings();
-				}),
-			);
+	override async setControlValue(key: string, value: unknown): Promise<void> {
+		if (key === "startLevel") value = asHeadingLevel(value);
+		await super.setControlValue(key, value);
+		this.plugin.applySettings();
+	}
 
-		new Setting(containerEl)
-			.setName("Start at heading level")
-			.setDesc("Headings above this level are left unnumbered.")
-			.addDropdown((d) => {
-				for (let i = 1; i <= 6; i++) {
-					d.addOption(String(i), `Heading ${i}`);
-				}
-				d.setValue(String(this.plugin.settings.startLevel));
-				d.onChange(async (v) => {
-					this.plugin.settings.startLevel = Number(v) as HeadingLevel;
-					await this.plugin.saveSettings();
-					this.plugin.applySettings();
-				});
-			});
+	override getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				name: "Enable numbering",
+				desc: "Show live heading numbers visually (does not modify your notes).",
+				control: { type: "toggle", key: "enabled" },
+			},
+			{
+				name: "Start at heading level",
+				desc: "Headings above this level are left unnumbered.",
+				control: {
+					type: "dropdown",
+					key: "startLevel",
+					options: START_LEVEL_OPTIONS,
+				},
+			},
+			{
+				name: "List library",
+				desc: "Pick a multilevel style, or choose Custom and edit formats below. Tokens: {n} {dotted} {1}–{6} {roman} {Roman} {alpha} {Alpha} {zh} {n-pad2}",
+				render: (setting) => {
+					this.renderPresetGallery(setting);
+				},
+			},
+			{
+				type: "group",
+				heading: "Custom formats",
+				items: [0, 1, 2, 3, 4, 5].map((index) => this.formatDefinition(index)),
+			},
+			{
+				type: "group",
+				heading: "How numbering works",
+				items: [
+					{
+						name: "Visual labels",
+						desc: "By default, numbers are visual only — they appear next to headings while you edit or read, but are not written into the Markdown file. They update automatically when you add, remove, or reorder headings.",
+					},
+					{
+						name: "Existing prefixes",
+						desc: "If a heading already starts with a number-like prefix (for example “1.” or “2.1”), the visual label is skipped so you do not see doubles like “1. 1. Title”.",
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Bake into Markdown",
+				items: [
+					{
+						name: "What baking does",
+						desc: "Baking writes the numbers into the file text (useful for PDF, Publish, search, and the outline). It is manual and only affects the note you currently have open. It does not auto-insert while you type, and it does not process the whole vault.",
+					},
+					{
+						name: "Bake the current note",
+						desc: "Open the note, choose a style in the list library, then run Bake numbers into current note from the command palette. Headings are rewritten, for example “# Intro” becomes “# 1 Intro”. Run it again after later edits. Bake strips an old recognizable prefix first.",
+					},
+					{
+						name: "Remove baked numbers",
+						desc: "Run Strip baked numbers from current note from the command palette.",
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Per-note control",
+				items: [
+					{
+						name: "Frontmatter",
+						desc: "ordinal-headings: off (or on) enables or disables this note. ordinal-headings-style picks a preset for this note (decimal, zh-chapter, custom, and the other library ids).",
+					},
+					{
+						name: "Commands",
+						desc: "Bake numbers into current note, Strip baked numbers from current note, Toggle numbering for current note, and Refresh heading numbers.",
+					},
+				],
+			},
+			{
+				type: "group",
+				heading: "Backup",
+				items: [
+					{
+						name: "Export settings",
+						desc: "Download the current configuration as JSON.",
+						action: () => {
+							downloadSettingsJson(this.plugin.settings, "ordinal-headings-settings.json");
+						},
+					},
+					{
+						name: "Import settings",
+						desc: "Replace the current configuration from a JSON file.",
+						action: () => {
+							this.importSettings();
+						},
+					},
+				],
+			},
+		];
+	}
 
-		containerEl.createEl("h3", { text: "List library" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Pick a multilevel style, or choose Custom and edit formats below. Tokens: {n} {dotted} {1}–{6} {roman} {Roman} {alpha} {Alpha} {zh} {n-pad2}",
-		});
-
-		const gallery = containerEl.createDiv({ cls: "ordinal-headings-gallery" });
-		for (const preset of PRESETS) {
-			const card = gallery.createDiv({
-				cls:
-					"ordinal-headings-preset" +
-					(this.plugin.settings.presetId === preset.id
-						? " is-selected"
-						: ""),
-			});
-			card.createDiv({
-				cls: "ordinal-headings-preset-title",
-				text: preset.name,
-			});
-			for (const line of preset.preview) {
-				card.createDiv({
-					cls: "ordinal-headings-preset-line",
-					text: line,
-				});
-			}
-			card.addEventListener("click", async () => {
-				this.plugin.settings.presetId = preset.id;
-				if (preset.id !== "none" && preset.id !== "custom") {
-					this.plugin.settings.customFormats = [...preset.formats];
-				}
-				await this.plugin.saveSettings();
-				this.plugin.applySettings();
-				this.display();
-			});
-		}
-
-		const customCard = gallery.createDiv({
-			cls:
-				"ordinal-headings-preset" +
-				(this.plugin.settings.presetId === "custom" ? " is-selected" : ""),
-		});
-		customCard.createDiv({
-			cls: "ordinal-headings-preset-title",
-			text: "Custom",
-		});
-		customCard.createDiv({
-			cls: "ordinal-headings-preset-line",
-			text: "Define your own",
-		});
-		customCard.createDiv({
-			cls: "ordinal-headings-preset-line",
-			text: "e.g. 第{n}章",
-		});
-		customCard.addEventListener("click", async () => {
-			this.plugin.settings.presetId = "custom";
-			await this.plugin.saveSettings();
-			this.plugin.applySettings();
-			this.display();
-		});
-
-		containerEl.createEl("h3", { text: "Custom formats (levels 1–6)" });
-		const formats =
-			this.plugin.settings.presetId === "custom"
-				? this.plugin.settings.customFormats
-				: (PRESETS.find((p) => p.id === this.plugin.settings.presetId)
-						?.formats ?? EMPTY_FORMATS);
-
-		for (let i = 0; i < 6; i++) {
-			const level = i + 1;
-			new Setting(containerEl)
-				.setName(`Heading ${level}`)
-				.addText((t) => {
-					t.setValue(formats[i] ?? "");
-					t.setPlaceholder(i === 0 ? "第{n}章" : "{dotted}");
-					t.setDisabled(this.plugin.settings.presetId !== "custom");
-					t.onChange(async (v) => {
+	private formatDefinition(index: number): SettingDefinition {
+		const level = index + 1;
+		return {
+			name: `Heading ${level}`,
+			render: (setting) => {
+				const formats =
+					this.plugin.settings.presetId === "custom"
+						? this.plugin.settings.customFormats
+						: (PRESETS.find((preset) => preset.id === this.plugin.settings.presetId)?.formats ??
+							EMPTY_FORMATS);
+				setting.addText((text) => {
+					text.setValue(formats[index] ?? "");
+					text.setPlaceholder(index === 0 ? "第{n}章" : "{dotted}");
+					text.setDisabled(this.plugin.settings.presetId !== "custom");
+					text.onChange((value) => {
 						if (this.plugin.settings.presetId !== "custom") return;
-						this.plugin.settings.customFormats[i] = v;
-						await this.plugin.saveSettings();
-						this.plugin.applySettings();
+						this.plugin.settings.customFormats = replaceFormat(
+							this.plugin.settings.customFormats,
+							index,
+							value,
+						);
+						void this.plugin.saveSettings().then(() => {
+							this.plugin.applySettings();
+						});
 					});
 				});
-		}
-
-		containerEl.createEl("h3", { text: "How numbering works" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "By default, numbers are visual only — they appear next to headings while you edit/read, but are not written into the Markdown file. They update automatically when you add, remove, or reorder headings.",
-		});
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "If a heading already starts with a number-like prefix (for example “1.” or “2.1”), the visual label is skipped so you do not see doubles like “1. 1. Title”.",
-		});
-
-		containerEl.createEl("h3", { text: "Put numbers into Markdown (bake)" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Baking writes the numbers into the file text (useful for PDF, Publish, search, and the outline). It is manual and only affects the note you currently have open — it does not auto-insert while you type, and it does not process the whole vault.",
-		});
-		const bakeSteps = containerEl.createEl("ol", {
-			cls: "setting-item-description ordinal-headings-help-list",
-		});
-		bakeSteps.createEl("li", {
-			text: "Open the note you want to number (Edit or Reading view).",
-		});
-		bakeSteps.createEl("li", {
-			text: "Choose your style above in the List library (bake uses the active preset).",
-		});
-		bakeSteps.createEl("li", {
-			text: "Open the Command palette (Ctrl+P / Cmd+P on desktop; Commands on mobile).",
-		});
-		bakeSteps.createEl("li", {
-			text: "Run: “Ordinal Headings: Bake numbers into current note”.",
-		});
-		bakeSteps.createEl("li", {
-			text: "Headings in that note are rewritten, e.g. “# Intro” → “# 1 Intro” (exact format depends on your preset).",
-		});
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "After you edit headings later, baked numbers can go stale. Run Bake again to renumber. Bake strips an old recognizable prefix first, so you should get “# 2.2 Title”, not “# 2.2 2.1 Title”.",
-		});
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "To remove numbers from the file: Command palette → “Ordinal Headings: Strip baked numbers from current note”.",
-		});
-
-		containerEl.createEl("h3", { text: "Per-note control" });
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Frontmatter (optional):",
-		});
-		containerEl.createEl("pre", {
-			cls: "ordinal-headings-code-sample",
-			text: "ordinal-headings: off\nordinal-headings-style: zh-chapter",
-		});
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "ordinal-headings: off (or on) enables/disables this note. ordinal-headings-style picks a preset for this note (decimal, zh-chapter, custom, …).",
-		});
-		containerEl.createEl("p", {
-			cls: "setting-item-description",
-			text: "Commands (Command palette): Bake numbers into current note · Strip baked numbers from current note · Toggle numbering for current note · Refresh heading numbers.",
-		});
-
-		mountSettingsFileControls(containerEl, {
-			filename: "ordinal-headings-settings.json",
-			pluginName: "Ordinal Headings",
-			getSettings: () => this.plugin.settings,
-			normalize: normalizeSettings,
-			onImported: async (next) => {
-				applyImportedSettings(this.plugin.settings, next);
-				await this.plugin.saveSettings();
-				this.plugin.applySettings();
-				this.display();
 			},
+		};
+	}
+
+	private renderPresetGallery(setting: Setting): void {
+		const gallery = setting.settingEl.createDiv({ cls: "ordinal-headings-gallery" });
+		for (const preset of PRESETS) {
+			this.renderPresetCard(gallery, preset.id, preset.name, preset.preview);
+		}
+		this.renderPresetCard(gallery, "custom", "Custom", ["Define your own", "e.g. 第{n}章"]);
+	}
+
+	private renderPresetCard(gallery: HTMLElement, id: string, name: string, lines: string[]): void {
+		const selected = this.plugin.settings.presetId === id;
+		const card = gallery.createDiv({
+			cls: selected ? "ordinal-headings-preset is-selected" : "ordinal-headings-preset",
+		});
+		card.createDiv({ cls: "ordinal-headings-preset-title", text: name });
+		for (const line of lines) {
+			card.createDiv({ cls: "ordinal-headings-preset-line", text: line });
+		}
+		card.addEventListener("click", () => {
+			void this.choosePreset(id);
 		});
 	}
+
+	private async choosePreset(id: string): Promise<void> {
+		this.plugin.settings.presetId = id;
+		const preset = PRESETS.find((item) => item.id === id);
+		if (preset && id !== "none" && id !== "custom") {
+			this.plugin.settings.customFormats = [...preset.formats];
+		}
+		await this.plugin.saveSettings();
+		this.plugin.applySettings();
+		this.update();
+	}
+
+	private importSettings(): void {
+		pickSettingsFile((text) => {
+			try {
+				const next = parseSettingsJson(text, normalizeSettings);
+				applyImportedSettings(this.plugin.settings, next);
+				void this.plugin.saveSettings().then(
+					() => {
+						this.plugin.applySettings();
+						this.update();
+						new Notice("Ordinal headings settings imported");
+					},
+					() => {
+						new Notice("Could not import settings");
+					},
+				);
+			} catch (err) {
+				new Notice(err instanceof Error ? err.message : "Could not import settings");
+			}
+		});
+	}
+}
+
+function replaceFormat(formats: LevelFormats, index: number, value: string): LevelFormats {
+	const next: LevelFormats = [...formats];
+	const slot = next[index];
+	if (slot === undefined) return formats;
+	next[index] = value;
+	return next;
 }
