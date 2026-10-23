@@ -1,6 +1,7 @@
 import type { Editor } from "obsidian";
 import {
 	computeNumberedHeadings,
+	linesInsideFencedCode,
 	stripBakedPrefix,
 } from "./numbering";
 import { formatsForPreset } from "./presets";
@@ -49,9 +50,11 @@ export function bakeNumbersIntoText(
  */
 export function stripNumbersFromText(text: string): TextRewriteResult {
 	const lines = text.split("\n");
+	const inCode = linesInsideFencedCode(lines);
 	let count = 0;
 
 	for (let i = 0; i < lines.length; i++) {
+		if (inCode[i]) continue;
 		const line = lines[i] ?? "";
 		const next = stripHeadingLine(line);
 		if (next === null) continue;
@@ -102,9 +105,11 @@ export function bakeNumbersIntoEditor(
 export function stripNumbersFromEditor(editor: Editor): number {
 	const text = editor.getValue();
 	const lines = text.split("\n");
+	const inCode = linesInsideFencedCode(lines);
 	let count = 0;
 
 	for (let i = lines.length - 1; i >= 0; i--) {
+		if (inCode[i]) continue;
 		const line = lines[i] ?? "";
 		const next = stripHeadingLine(line);
 		if (next === null) continue;

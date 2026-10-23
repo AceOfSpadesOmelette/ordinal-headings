@@ -95,12 +95,80 @@ export function frontmatterLineCount(text: string): number {
 	return block.split("\n").length;
 }
 
+interface OpenFence {
+	char: "`" | "~";
+	len: number;
+}
+
+function lineWithoutCr(line: string): string {
+	return line.endsWith("\r") ? line.slice(0, -1) : line;
+}
+
+/**
+ * CommonMark opening fence: 0–3 spaces, then 3+ backticks or tildes.
+ * A backtick fence whose info string contains a backtick is not an opener.
+ */
+function openingFence(line: string): OpenFence | null {
+	const text = lineWithoutCr(line);
+	let i = 0;
+	while (i < 3 && text[i] === " ") i += 1;
+	const char = text[i];
+	if (char !== "`" && char !== "~") return null;
+	const start = i;
+	while (text[i] === char) i += 1;
+	const len = i - start;
+	if (len < 3) return null;
+	const info = text.slice(i);
+	if (char === "`" && info.includes("`")) return null;
+	return { char, len };
+}
+
+/** Closing fence: 0–3 spaces, then at least as many of the same marker, then only spaces. */
+function isClosingFence(line: string, fence: OpenFence): boolean {
+	const text = lineWithoutCr(line);
+	let i = 0;
+	while (i < 3 && text[i] === " ") i += 1;
+	if (text[i] !== fence.char) return false;
+	const start = i;
+	while (text[i] === fence.char) i += 1;
+	if (i - start < fence.len) return false;
+	for (; i < text.length; i += 1) {
+		const c = text[i];
+		if (c !== " " && c !== "\t") return false;
+	}
+	return true;
+}
+
+/**
+ * True for lines between a CommonMark opening and closing fence.
+ * Marker lines are false. An unclosed fence marks every following line.
+ * Scanning starts at startLine so YAML frontmatter can be left out.
+ */
+export function linesInsideFencedCode(
+	lines: string[],
+	startLine = 0,
+): boolean[] {
+	const inside = new Array<boolean>(lines.length).fill(false);
+	let fence: OpenFence | null = null;
+	for (let i = startLine; i < lines.length; i++) {
+		const line = lines[i] ?? "";
+		if (fence) {
+			if (isClosingFence(line, fence)) fence = null;
+			else inside[i] = true;
+		} else {
+			fence = openingFence(line);
+		}
+	}
+	return inside;
+}
+
 export function parseHeadings(
 	docText: string,
 	startLevel: HeadingLevel = 1,
 ): HeadingHit[] {
 	const lines = docText.split("\n");
 	const skip = frontmatterLineCount(docText);
+	const inCode = linesInsideFencedCode(lines, skip);
 	const hits: HeadingHit[] = [];
 	let offset = 0;
 
@@ -108,7 +176,7 @@ export function parseHeadings(
 		const lineText = lines[i] ?? "";
 		const lineLen = lineText.length + (i < lines.length - 1 ? 1 : 0);
 
-		if (i >= skip) {
+		if (i >= skip && !inCode[i]) {
 			const m = HEADING_RE.exec(lineText);
 			if (m) {
 				const hashes = m[1]!;
