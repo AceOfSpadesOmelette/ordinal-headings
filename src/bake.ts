@@ -29,6 +29,7 @@ export function bakeNumbersIntoText(
 		formats,
 		settings.startLevel,
 		settings.trailing,
+		settings.startNumber,
 	);
 	if (numbered.length === 0) return { text, count: 0 };
 
@@ -82,6 +83,7 @@ export function bakeNumbersIntoEditor(
 		formats,
 		settings.startLevel,
 		settings.trailing,
+		settings.startNumber,
 	);
 	if (numbered.length === 0) return 0;
 

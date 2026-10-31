@@ -62,12 +62,14 @@ export class ReadingOrdinalManager {
 	private settings: OrdinalSettings = {
 		enabled: true,
 		startLevel: 1,
+		startNumber: 1,
 		presetId: "decimal",
 		customFormats: ["", "", "", "", "", ""],
 		trailing: " ",
 	};
 	private noteEnabled = true;
 	private notePresetId: string | null = null;
+	private noteStartNumber: number | null = null;
 
 	setApp(app: App): void {
 		this.app = app;
@@ -83,6 +85,14 @@ export class ReadingOrdinalManager {
 
 	setNotePresetId(id: string | null): void {
 		this.notePresetId = id;
+	}
+
+	setNoteStartNumber(startNumber: number | null): void {
+		this.noteStartNumber = startNumber;
+	}
+
+	private resolvedStartNumber(): number {
+		return this.noteStartNumber ?? this.settings.startNumber;
 	}
 
 	registerPostProcessor(
@@ -159,7 +169,12 @@ export class ReadingOrdinalManager {
 			});
 		}
 		if (hits.length === 0) return [];
-		return numberHeadings(hits, formats, this.settings.trailing);
+		return numberHeadings(
+			hits,
+			formats,
+			this.settings.trailing,
+			this.resolvedStartNumber(),
+		);
 	}
 
 	/**
@@ -242,6 +257,7 @@ export class ReadingOrdinalManager {
 			formats,
 			this.settings.startLevel,
 			this.settings.trailing,
+			this.resolvedStartNumber(),
 		);
 
 		// Only update headings in the current section element; other sections

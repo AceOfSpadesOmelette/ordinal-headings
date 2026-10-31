@@ -23,6 +23,11 @@ export interface OrdinalSettings {
 	enabled: boolean;
 	/** First heading level that receives a number (1–6). */
 	startLevel: HeadingLevel;
+	/**
+	 * Number given to the first heading at the highest numbered level.
+	 * Whole numbers from 0. Later headings at that level continue from it.
+	 */
+	startNumber: number;
 	presetId: string;
 	/** When presetId is "custom", these formats are used. */
 	customFormats: LevelFormats;

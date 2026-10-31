@@ -57,6 +57,70 @@ describe("parse and number headings", () => {
 		expect(numbered.map((h) => h.label.trim())).toEqual(["1", "1.1", "1.1.1", "2"]);
 	});
 
+	it("starts the highest numbered level at a chosen number", () => {
+		const formats = formatsForPreset("decimal", DEFAULT_SETTINGS.customFormats);
+		const numbered = computeNumberedHeadings(doc, formats, 1, " ", 5);
+		expect(numbered.map((h) => h.label.trim())).toEqual(["5", "5.1", "5.1.1", "6"]);
+	});
+
+	it("keeps a seen zero in dotted labels", () => {
+		const formats = formatsForPreset("decimal", DEFAULT_SETTINGS.customFormats);
+		const numbered = computeNumberedHeadings(
+			`# A
+## B
+# C
+### D
+`,
+			formats,
+			1,
+			" ",
+			0,
+		);
+		expect(numbered.map((h) => h.label.trim())).toEqual(["0", "0.1", "1", "1.1"]);
+
+		const skipped = computeNumberedHeadings(
+			`# A
+### C
+`,
+			formats,
+			1,
+			" ",
+			0,
+		);
+		expect(skipped.map((h) => h.label.trim())).toEqual(["0", "0.1"]);
+	});
+
+	it("anchors on the first H2 when the note has no H1", () => {
+		const formats = formatsForPreset("decimal", DEFAULT_SETTINGS.customFormats);
+		const numbered = computeNumberedHeadings(
+			`## A
+### B
+## C
+`,
+			formats,
+			1,
+			" ",
+			5,
+		);
+		expect(numbered.map((h) => h.label.trim())).toEqual(["5", "5.1", "6"]);
+	});
+
+	it("ignores headings above the start level and anchors on H2", () => {
+		const formats = formatsForPreset("decimal", DEFAULT_SETTINGS.customFormats);
+		const numbered = computeNumberedHeadings(
+			`# Ignored
+## First
+### Child
+## Second
+`,
+			formats,
+			2,
+			" ",
+			4,
+		);
+		expect(numbered.map((h) => h.label.trim())).toEqual(["4", "4.1", "5"]);
+	});
+
 	it("formats classic outline tokens", () => {
 		expect(formatLabel("{Roman}.", 1, [1, 0, 0, 0, 0, 0])).toBe("I.");
 		expect(formatLabel("{Alpha}.", 2, [1, 1, 0, 0, 0, 0])).toBe("A.");
@@ -118,10 +182,14 @@ describe("presets and settings", () => {
 		expect(normalizeSettings(undefined)).toMatchObject({
 			enabled: true,
 			startLevel: 1,
+			startNumber: 1,
 			presetId: "decimal",
 		});
 		expect(normalizeSettings({ startLevel: 9, enabled: false }).startLevel).toBe(1);
 		expect(normalizeSettings({ startLevel: 9, enabled: false }).enabled).toBe(false);
+		expect(normalizeSettings({ startNumber: 0 }).startNumber).toBe(0);
+		expect(normalizeSettings({ startNumber: -1 }).startNumber).toBe(1);
+		expect(normalizeSettings({ startNumber: 1.5 }).startNumber).toBe(1);
 	});
 });
 
@@ -142,6 +210,22 @@ describe("bake / strip text", () => {
 		expect(stripped.count).toBe(2);
 		expect(stripped.text).toContain("# Alpha");
 		expect(stripped.text).toContain("## Beta");
+	});
+
+	it("bakes from the configured starting number", () => {
+		const text = `# Alpha
+## Beta
+# Gamma
+`;
+		const baked = bakeNumbersIntoText(text, {
+			...DEFAULT_SETTINGS,
+			presetId: "decimal",
+			startNumber: 5,
+		});
+		expect(baked.count).toBe(3);
+		expect(baked.text).toContain("# 5 Alpha");
+		expect(baked.text).toContain("## 5.1 Beta");
+		expect(baked.text).toContain("# 6 Gamma");
 	});
 
 	it("does not bake or strip hash lines inside fenced code", () => {

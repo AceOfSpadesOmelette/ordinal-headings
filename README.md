@@ -6,6 +6,8 @@ Word-style numbers for Heading 1–6. By default the numbers are visual only, so
 
 Numbers appear next to headings while you edit or read. They are not written into the file until you bake them. They update when you add, remove, or reorder headings.
 
+**First heading number** chooses the number of the first heading at the highest level that is numbered in that note. Later headings at that same level continue from it (`5`, then `6`). Headings below it still start at `1` (`5.1`, `5.2`). `0` is allowed. The default is `1`. A note can override the plugin setting with frontmatter, shown below. Live labels and baking use the same number.
+
 If a heading already starts with a number-like prefix, such as `1.` or `2.1`, the visual label is skipped so you do not see `1. 1. Title`.
 
 These titles are also skipped, so they do not take a number:
@@ -58,10 +60,12 @@ To take the numbers back out, run **Strip baked numbers from current note**.
 ```yaml
 ordinal-headings: off
 ordinal-headings-style: zh-chapter
+ordinal-headings-start: 5
 ```
 
 - `ordinal-headings: off` or `on` turns numbering off or on for this note.
 - `ordinal-headings-style` picks a preset for this note, such as `decimal`, `zh-chapter`, or `custom`.
+- `ordinal-headings-start` sets the first number at the highest numbered level. Use a whole number, `0` or greater. If it is omitted or not a whole number, **First heading number** from settings is used.
 
 **Toggle numbering for current note** writes that on/off flag for the open note.
 

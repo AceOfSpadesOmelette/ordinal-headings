@@ -200,10 +200,14 @@ export function parseHeadings(
 	return hits;
 }
 
-function dottedPath(counters: number[], level: HeadingLevel): string {
+function dottedPath(
+	counters: number[],
+	level: HeadingLevel,
+	seen?: boolean[],
+): string {
 	return counters
 		.slice(0, level)
-		.filter((c) => c > 0)
+		.filter((c, i) => (seen ? Boolean(seen[i]) : c > 0))
 		.join(".");
 }
 
@@ -211,11 +215,12 @@ export function formatLabel(
 	template: string,
 	level: HeadingLevel,
 	counters: number[],
+	seen?: boolean[],
 ): string {
 	if (!template.trim()) return "";
 
 	const n = counters[level - 1] ?? 0;
-	const dotted = dottedPath(counters, level);
+	const dotted = dottedPath(counters, level, seen);
 
 	let out = template;
 	out = out.replaceAll("{dotted}", dotted);
@@ -239,18 +244,34 @@ export function numberHeadings(
 	hits: HeadingHit[],
 	formats: LevelFormats,
 	trailing = " ",
+	startNumber = 1,
 ): NumberedHeading[] {
 	const counters = [0, 0, 0, 0, 0, 0];
+	const seen = [false, false, false, false, false, false];
 	const out: NumberedHeading[] = [];
+
+	let anchor: HeadingLevel | null = null;
+	for (const hit of hits) {
+		if (anchor === null || hit.level < anchor) anchor = hit.level;
+	}
 
 	for (const hit of hits) {
 		const idx = hit.level - 1;
-		counters[idx] = (counters[idx] ?? 0) + 1;
-		for (let i = hit.level; i < 6; i++) counters[i] = 0;
+		if (anchor !== null && hit.level === anchor && !seen[idx]) {
+			counters[idx] = startNumber;
+		} else {
+			counters[idx] = (counters[idx] ?? 0) + 1;
+		}
+		seen[idx] = true;
+		for (let i = hit.level; i < 6; i++) {
+			counters[i] = 0;
+			seen[i] = false;
+		}
 
 		const snap = [...counters];
+		const seenSnap = [...seen];
 		const template = formats[idx] ?? "";
-		const core = formatLabel(template, hit.level, snap);
+		const core = formatLabel(template, hit.level, snap, seenSnap);
 		const label = core ? `${core}${trailing}` : "";
 
 		out.push({
@@ -267,7 +288,8 @@ export function computeNumberedHeadings(
 	formats: LevelFormats,
 	startLevel: HeadingLevel,
 	trailing = " ",
+	startNumber = 1,
 ): NumberedHeading[] {
 	const hits = parseHeadings(docText, startLevel);
-	return numberHeadings(hits, formats, trailing);
+	return numberHeadings(hits, formats, trailing, startNumber);
 }

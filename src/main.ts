@@ -12,6 +12,7 @@ import {
 	DEFAULT_SETTINGS,
 	normalizeSettings,
 	OrdinalSettingTab,
+	parseStartNumber,
 } from "./settings";
 import { FRONTMATTER_KEY, type OrdinalSettings } from "./types";
 
@@ -42,6 +43,9 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 			this.readingManager.setNoteEnabled(enabled);
 			this.readingManager.setNotePresetId(
 				this.notePresetId(ctx.sourcePath),
+			);
+			this.readingManager.setNoteStartNumber(
+				this.noteStartNumber(ctx.sourcePath),
 			);
 			this.readingManager.registerPostProcessor(el, ctx);
 		});
@@ -163,6 +167,7 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 		const settings = {
 			...this.settings,
 			presetId: this.effectivePresetId(),
+			startNumber: this.noteStartNumber(file.path),
 		};
 		const editor = this.activeEditor();
 		if (editor) {
@@ -219,14 +224,19 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 		const presetId = file
 			? this.notePresetId(file.path)
 			: this.settings.presetId;
+		const startNumber = file
+			? this.noteStartNumber(file.path)
+			: this.settings.startNumber;
 		this.readingManager.setNoteEnabled(noteEnabled);
 		this.readingManager.setNotePresetId(presetId);
-		this.applyEditorExtensions(noteEnabled, presetId);
+		this.readingManager.setNoteStartNumber(startNumber);
+		this.applyEditorExtensions(noteEnabled, presetId, startNumber);
 	}
 
 	private applyEditorExtensions(
 		noteEnabled: boolean,
 		presetId: string,
+		startNumber: number,
 	): void {
 		const enabled =
 			this.settings.enabled && noteEnabled && presetId !== "none";
@@ -235,6 +245,7 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 			...buildEditorOrdinalExtension({
 				enabled,
 				startLevel: this.settings.startLevel,
+				startNumber,
 				presetId,
 				customFormats: this.settings.customFormats,
 				trailing: this.settings.trailing,
@@ -262,6 +273,15 @@ export default class OrdinalHeadingsPlugin extends Plugin {
 			frontmatterField(cache?.frontmatter, "ordinal-headings-style");
 		if (typeof style === "string" && style.trim()) return style.trim();
 		return this.settings.presetId;
+	}
+
+	noteStartNumber(sourcePath: string): number {
+		const cache = this.app.metadataCache.getCache(sourcePath);
+		const raw = frontmatterField(
+			cache?.frontmatter,
+			`${FRONTMATTER_KEY}-start`,
+		);
+		return parseStartNumber(raw) ?? this.settings.startNumber;
 	}
 
 	private async toggleNoteFrontmatter(file: TFile): Promise<void> {

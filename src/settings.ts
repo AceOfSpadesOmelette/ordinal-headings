@@ -7,6 +7,7 @@ import type { HeadingLevel, LevelFormats, OrdinalSettings } from "./types";
 export const DEFAULT_SETTINGS: OrdinalSettings = {
 	enabled: true,
 	startLevel: 1,
+	startNumber: 1,
 	presetId: "decimal",
 	customFormats: [
 		"{dotted}",
@@ -25,6 +26,26 @@ function asHeadingLevel(value: unknown): HeadingLevel {
 		return start;
 	}
 	return 1;
+}
+
+/** Whole number from 0, or null when the value should be ignored. */
+export function parseStartNumber(value: unknown): number | null {
+	if (typeof value === "number") {
+		if (!Number.isInteger(value) || value < 0) return null;
+		return value;
+	}
+	if (typeof value === "string") {
+		const trimmed = value.trim();
+		if (!trimmed) return null;
+		const parsed = Number(trimmed);
+		if (!Number.isInteger(parsed) || parsed < 0) return null;
+		return parsed;
+	}
+	return null;
+}
+
+function asStartNumber(value: unknown): number {
+	return parseStartNumber(value) ?? 1;
 }
 
 function asLevelFormats(value: unknown): LevelFormats {
@@ -60,6 +81,7 @@ export function normalizeSettings(raw: unknown): OrdinalSettings {
 	return {
 		enabled: data.enabled !== false,
 		startLevel: asHeadingLevel(data.startLevel),
+		startNumber: asStartNumber(data.startNumber),
 		presetId: typeof data.presetId === "string" ? data.presetId : "decimal",
 		customFormats: asLevelFormats(data.customFormats),
 		trailing: typeof data.trailing === "string" ? data.trailing : " ",
@@ -90,6 +112,7 @@ export class OrdinalSettingTab extends PluginSettingTab {
 
 	override async setControlValue(key: string, value: unknown): Promise<void> {
 		if (key === "startLevel") value = asHeadingLevel(value);
+		if (key === "startNumber") value = asStartNumber(value);
 		await super.setControlValue(key, value);
 		this.plugin.applySettings();
 	}
@@ -108,6 +131,23 @@ export class OrdinalSettingTab extends PluginSettingTab {
 					type: "dropdown",
 					key: "startLevel",
 					options: START_LEVEL_OPTIONS,
+				},
+			},
+			{
+				name: "First heading number",
+				desc: "The first heading at the highest numbered level begins at this whole number (0 or greater). Later headings at that level continue from it. Headings below it still start at 1. A note can override this with ordinal-headings-start.",
+				control: {
+					type: "number",
+					key: "startNumber",
+					min: 0,
+					step: 1,
+					placeholder: "1",
+					validate: (value) => {
+						if (!Number.isInteger(value) || value < 0) {
+							return "Enter a whole number, 0 or greater.";
+						}
+						return;
+					},
 				},
 			},
 			{
@@ -160,7 +200,7 @@ export class OrdinalSettingTab extends PluginSettingTab {
 				items: [
 					{
 						name: "Frontmatter",
-						desc: "ordinal-headings: off (or on) enables or disables this note. ordinal-headings-style picks a preset for this note (decimal, zh-chapter, custom, and the other library ids).",
+						desc: "ordinal-headings: off (or on) enables or disables this note. ordinal-headings-style picks a preset for this note (decimal, zh-chapter, custom, and the other library ids). ordinal-headings-start sets the first number at the highest numbered level (a whole number, 0 or greater). If omitted or invalid, First heading number is used.",
 					},
 					{
 						name: "Commands",

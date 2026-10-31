@@ -15,6 +15,7 @@ import type { HeadingLevel, LevelFormats } from "./types";
 export interface EditorOrdinalOptions {
 	enabled: boolean;
 	startLevel: HeadingLevel;
+	startNumber: number;
 	presetId: string;
 	customFormats: LevelFormats;
 	trailing: string;
@@ -30,6 +31,7 @@ const editorOrdinalOptions = Facet.define<
 			: {
 					enabled: false,
 					startLevel: 1,
+					startNumber: 1,
 					presetId: "decimal",
 					customFormats: ["", "", "", "", "", ""],
 					trailing: " ",
@@ -90,6 +92,7 @@ function buildDecorations(
 		formats,
 		opts.startLevel,
 		opts.trailing,
+		opts.startNumber,
 	);
 
 	for (const h of numbered) {
